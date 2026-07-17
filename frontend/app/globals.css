@@ -1,0 +1,291 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Custom Properties ───────────────────────────────────────────────── */
+:root {
+  --bg-primary:   #060C1A;
+  --bg-secondary: #0A1628;
+  --bg-card:      #0C1830;
+  --accent-blue:  #4F7FFF;
+  --accent-indigo:#7C6FFF;
+  --color-engaged:    #22D3A6;
+  --color-ne:         #FF4E4E;
+  --color-collab:     #38BDF8;
+  --color-warning:    #F59E0B;
+  --text-primary:  #E2E8F0;
+  --text-secondary:#94A3B8;
+  --border:       rgba(148,163,184,0.1);
+}
+
+/* ─── Base reset ────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.35); }
+
+/* ─── Selection ─────────────────────────────────────────────────────────────── */
+::selection { background: rgba(79,127,255,0.3); color: #fff; }
+
+/* ─── Gradient text utility ─────────────────────────────────────────────────── */
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, #4F7FFF 0%, #7C6FFF 50%, #22D3A6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 200% 200%;
+    animation: gradient 6s ease infinite;
+  }
+
+  .text-gradient-warm {
+    background: linear-gradient(135deg, #F59E0B 0%, #FF4E4E 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass-card {
+    background: rgba(12, 24, 48, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(148,163,184,0.1);
+  }
+
+  .glass-card-hover {
+    background: rgba(15, 30, 60, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(79,127,255,0.2);
+  }
+
+  .grid-bg {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M 40 0 L 0 0 0 40' fill='none' stroke='rgba(148,163,184,0.04)' stroke-width='1'/%3E%3C/svg%3E");
+  }
+
+  .noise-bg::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    opacity: 0.03;
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      rgba(255,255,255,0.03) 50%,
+      transparent 60%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  .glow-blue   { box-shadow: 0 0 30px rgba(79,127,255,0.25); }
+  .glow-green  { box-shadow: 0 0 20px rgba(34,211,166,0.25); }
+  .glow-red    { box-shadow: 0 0 20px rgba(255,78,78,0.25); }
+
+  .status-engaged {
+    background: rgba(34,211,166,0.12);
+    border: 1px solid rgba(34,211,166,0.3);
+    color: #22D3A6;
+  }
+  .status-not-engaged {
+    background: rgba(255,78,78,0.12);
+    border: 1px solid rgba(255,78,78,0.3);
+    color: #FF4E4E;
+  }
+  .status-collab {
+    background: rgba(56,189,248,0.12);
+    border: 1px solid rgba(56,189,248,0.3);
+    color: #38BDF8;
+  }
+  .status-warning {
+    background: rgba(245,158,11,0.12);
+    border: 1px solid rgba(245,158,11,0.3);
+    color: #F59E0B;
+  }
+  .status-unknown {
+    background: rgba(148,163,184,0.1);
+    border: 1px solid rgba(148,163,184,0.2);
+    color: #94A3B8;
+  }
+}
+
+/* ─── Keyframes ─────────────────────────────────────────────────────────────── */
+@keyframes gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
+@keyframes pulseRing {
+  0%   { transform: scale(0.95); opacity: 0.8; }
+  70%  { transform: scale(1.1); opacity: 0; }
+  100% { transform: scale(0.95); opacity: 0; }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes draw {
+  from { stroke-dashoffset: 502; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* ─── Pulse ring (health gauge) ─────────────────────────────────────────────── */
+.pulse-ring {
+  animation: pulseRing 2.5s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+}
+
+/* ─── Animated dot (live indicator) ─────────────────────────────────────────── */
+.live-dot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.live-dot::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22D3A6;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(34,211,166,0.4);
+  animation: pingLive 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes pingLive {
+  0%   { box-shadow: 0 0 0 0 rgba(34,211,166,0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(34,211,166,0); }
+  100% { box-shadow: 0 0 0 0 rgba(34,211,166,0); }
+}
+
+/* ─── Chart tooltip override ────────────────────────────────────────────────── */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--bg-card) !important;
+  border: 1px solid rgba(148,163,184,0.15) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+}
+.recharts-tooltip-label {
+  color: var(--text-secondary) !important;
+  font-size: 11px !important;
+  margin-bottom: 4px !important;
+}
+
+/* ─── Cursor (pointer-fine devices only) ────────────────────────────────────── */
+@media (pointer: fine) {
+  .cursor-dot {
+    position: fixed;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-blue);
+    pointer-events: none;
+    z-index: 9999;
+    transition: transform 0.1s ease;
+  }
+}
+
+/* ─── Sidebar nav active ────────────────────────────────────────────────────── */
+.nav-link-active {
+  background: rgba(79,127,255,0.1);
+  border-left: 2px solid var(--accent-blue);
+  color: #fff;
+}
+
+/* ─── Progress bar (video processing) ──────────────────────────────────────── */
+.progress-bar {
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-indigo));
+  transition: width 0.3s ease;
+}
+
+/* ─── Copilot chat bubbles ──────────────────────────────────────────────────── */
+.bubble-user {
+  background: rgba(79,127,255,0.15);
+  border: 1px solid rgba(79,127,255,0.25);
+  border-radius: 16px 16px 4px 16px;
+  color: #E2E8F0;
+}
+.bubble-ai {
+  background: rgba(12,24,48,0.8);
+  border: 1px solid rgba(148,163,184,0.12);
+  border-radius: 16px 16px 16px 4px;
+  color: #E2E8F0;
+}
+
+/* ─── Drag & drop zone ──────────────────────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed rgba(79,127,255,0.3);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: rgba(79,127,255,0.7);
+  background: rgba(79,127,255,0.04);
+}
+
+/* ─── Table ─────────────────────────────────────────────────────────────────── */
+.data-table th {
+  background: rgba(148,163,184,0.05);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 10px 16px;
+}
+.data-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(148,163,184,0.06);
+  font-size: 13px;
+}
+.data-table tr:hover td { background: rgba(148,163,184,0.03); }

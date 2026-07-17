@@ -1,0 +1,25 @@
+# EduLens Backend Dependencies
+# Install: pip install -r backend/requirements_backend.txt
+
+# Core API
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+pydantic>=2.7.0
+
+# Already in main requirements.txt (model deps):
+# torch>=2.0.0
+# torchvision>=0.15.0
+# timm>=0.9.0
+# opencv-python>=4.7.0
+# numpy>=1.23.0
+
+# PDF generation
+fpdf2>=2.7.9
+
+# Optional: LLM copilot (upgrade from rule-based)
+# openai>=1.35.0
+
+# Auth (demo mode uses plaintext; enable for production)
+# bcrypt>=4.1.3
+# python-jose[cryptography]>=3.3.0

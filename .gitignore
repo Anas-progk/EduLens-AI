@@ -1,0 +1,52 @@
+# Ignore notebooks
+*.ipynb
+
+
+# Ignore planning file
+project plan.txt
+
+
+data/collab_raw/crops
+raw_videos/
+video_colab/
+# Ignore videos
+videos/
+
+# Ignore processed/raw dataset folders
+custom_dataset/raw_videos/
+custom_dataset/EduAction_E/
+custom_dataset/EduAction_NE/
+custom_dataset/processed/
+custom_dataset/processed_edu/
+
+
+# Ignore environments
+venv/
+env/
+
+# Ignore secrets
+.env
+
+# Models
+weights/
+best_engaged_files/
+*.pt
+*.pth
+*.npz
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+
+# Archives
+*.zip
+
+# Datasets/Videos
+data/collab_raw/
+raw_videos/
+videos/
+video_colab/
+
+# Python cache
+__pycache__/
+*.pyc
