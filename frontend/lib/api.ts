@@ -1,17 +1,83 @@
 import axios from 'axios';
-import type { Session, CopilotMessage, StudentState, TimelinePoint, AlertEvent } from './types';
+import type { Session, CopilotMessage, StudentState, TimelinePoint, AlertEvent, AuthUser, LoginResponse } from './types';
 
 const BASE = '/api';
+
+const LS_ACCESS = 'edulens_access_token';
+const LS_REFRESH = 'edulens_refresh_token';
+const LS_USER = 'edulens_user';
 
 const client = axios.create({ baseURL: BASE, timeout: 120000 });
 
 client.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('edulens_token');
+    const token = localStorage.getItem(LS_ACCESS);
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
+
+function processQueue(error: unknown, token: string | null = null) {
+  failedQueue.forEach((prom) => {
+    if (error) prom.reject(error);
+    else if (token) prom.resolve(token);
+  });
+  failedQueue = [];
+}
+
+client.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return client(originalRequest);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshToken = localStorage.getItem(LS_REFRESH);
+        if (!refreshToken) throw new Error('No refresh token');
+
+        const { data } = await axios.post(`${BASE}/auth/refresh`, { refresh_token: refreshToken });
+        const { access_token, refresh_token, user } = data as LoginResponse;
+
+        localStorage.setItem(LS_ACCESS, access_token);
+        localStorage.setItem(LS_REFRESH, refresh_token);
+        localStorage.setItem(LS_USER, JSON.stringify(user));
+
+        processQueue(null, access_token);
+
+        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        return client(originalRequest);
+      } catch (err) {
+        processQueue(err, null);
+        localStorage.removeItem(LS_ACCESS);
+        localStorage.removeItem(LS_REFRESH);
+        localStorage.removeItem(LS_USER);
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 // ---- snake_case -> camelCase mappers (backend uses snake, frontend uses camel) ----
 function mapStudent(d: Record<string, unknown>): StudentState {
@@ -167,9 +233,18 @@ export async function generateReport(sessionId: string): Promise<Blob> {
 }
 
 // ---- Auth ----
-export async function login(email: string, password: string) {
-  const { data } = await client.post('/auth/login', { email, password });
-  return data;
+export async function login(email: string, password: string, captchaToken?: string): Promise<LoginResponse> {
+  const { data } = await client.post('/auth/login', { email, password, captcha_token: captchaToken });
+  return data as LoginResponse;
+}
+
+export async function logoutApi(refreshToken: string): Promise<void> {
+  await client.post('/auth/logout', { refresh_token: refreshToken });
+}
+
+export async function refreshTokenApi(refreshToken: string): Promise<LoginResponse> {
+  const { data } = await axios.post(`${BASE}/auth/refresh`, { refresh_token: refreshToken });
+  return data as LoginResponse;
 }
 
 // ---- Dashboard stats ----

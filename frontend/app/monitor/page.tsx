@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Upload, BarChart3, Brain, Bell, Users, Activity, ChevronRight, RefreshCw, Video, CheckCircle2 } from 'lucide-react';
 import { Sidebar, TopNav } from '@/components/Navbar';
+import { AuthGuard } from '@/components/AuthGuard';
 import { HealthPulse, MiniStat } from '@/components/HealthPulse';
 import { ClassroomMap } from '@/components/ClassroomMap';
 import { AlertPanel } from '@/components/AlertPanel';
@@ -218,7 +219,7 @@ export default function MonitorPage() {
       const stored = loadSessionFromLocalStorage();
       if (stored && stored.id) {
         // saved session has no `status`; force 'done' so the metrics render on restore
-        setSession({ ...(stored as Record<string, unknown>), status: 'done' } as unknown as Session);
+        setSession({ ...(stored as unknown as Record<string, unknown>), status: 'done' } as unknown as Session);
         setSessionId(stored.id);
         if (Array.isArray(stored.frames)) setFrameData(stored.frames as FrameData[]);
         setProcessing(false);
@@ -286,6 +287,16 @@ export default function MonitorPage() {
   }, [sessionId, processing]);
 
   const handleFile = async (file: File) => {
+    const maxSize = 500 * 1024 * 1024; // 500MB
+    const validTypes = ['video/mp4', 'video/avi', 'video/mov', 'video/webm', 'video/x-matroska', ''];
+    if (file.size > maxSize) {
+      toast.error('File too large — maximum 500MB');
+      return;
+    }
+    if (!validTypes.includes(file.type) && file.type !== '') {
+      toast.error('Unsupported format — use MP4, AVI, MOV, or WebM');
+      return;
+    }
     const url = URL.createObjectURL(file);
     setVideoUrl(url);
     sessionStore.videoUrl = url;        // persist for back-navigation / seek
@@ -333,6 +344,7 @@ export default function MonitorPage() {
   const activeAlerts      = displayAlerts.filter(a => !a.resolved).length;
 
   return (
+    <AuthGuard>
     <div className="flex h-screen bg-bg-primary overflow-hidden">
       <Sidebar />
       <main className="flex-1 flex flex-col overflow-hidden">
@@ -380,9 +392,9 @@ export default function MonitorPage() {
                       {!demoMode && session?.status === 'done' && (
                         <div className="flex items-center gap-1.5 text-xs text-status-engaged"><CheckCircle2 size={12} /> Real Analysis</div>
                       )}
-                      {session?.collabVerdict && (
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: session.collabVerdict === 'COLLABORATIVE' ? 'rgba(56,189,248,0.12)' : 'rgba(255,78,78,0.12)', color: session.collabVerdict === 'COLLABORATIVE' ? '#38BDF8' : '#FF4E4E' }}>
-                          {session.collabVerdict === 'COLLABORATIVE' ? 'Collaborative' : 'Not Collaborative'}
+                      {(session?.collabVerdict && session.collabVerdict !== 'Unknown') && (
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: session.collabVerdict === 'Collaborative' ? 'rgba(56,189,248,0.12)' : 'rgba(255,78,78,0.12)', color: session.collabVerdict === 'Collaborative' ? '#38BDF8' : '#FF4E4E' }}>
+                          {session.collabVerdict === 'Collaborative' ? 'Collaborative' : 'Not Collaborative'}
                         </span>
                       )}
                       <Link href="/dashboard" className="flex items-center gap-1 text-xs text-accent-blue hover:underline">
@@ -476,5 +488,6 @@ export default function MonitorPage() {
         </div>
       </main>
     </div>
+    </AuthGuard>
   );
 }

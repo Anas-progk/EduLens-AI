@@ -19,7 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-
+from fastapi import Depends
+from backend.dependencies import get_current_user, require_teacher, require_hod, require_principal
 # Init DB before importing routers
 from backend.database import init_db
 init_db()
@@ -59,18 +60,32 @@ from backend.database import list_sessions
 analytics_router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 @analytics_router.get("/dashboard")
-async def dashboard_stats():
+async def dashboard_stats(
+    current_user=Depends(require_hod),
+):
     sessions = list_sessions()
     done = [s for s in sessions if s.get("status") == "done"]
+
     return {
         "total_sessions": len(sessions),
-        "avg_engagement": round(sum(s.get("avg_engagement") or 0 for s in done) / max(len(done), 1), 1),
-        "avg_collab": round(sum(s.get("avg_collab") or 0 for s in done) / max(len(done), 1), 1),
-        "avg_health": round(sum(s.get("class_health") or 0 for s in done) / max(len(done), 1), 1),
+        "avg_engagement": round(
+            sum(s.get("avg_engagement") or 0 for s in done)
+            / max(len(done), 1),
+            1,
+        ),
+        "avg_collab": round(
+            sum(s.get("avg_collab") or 0 for s in done)
+            / max(len(done), 1),
+            1,
+        ),
+        "avg_health": round(
+            sum(s.get("class_health") or 0 for s in done)
+            / max(len(done), 1),
+            1,
+        ),
         "total_alerts": 0,
         "recent_sessions": sessions[:5],
     }
-
 app.include_router(analytics_router)
 
 # ─── Alerts router (inline) ───────────────────────────────────────────────────
@@ -79,7 +94,10 @@ from backend.database import get_session as db_get_session
 alerts_router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
 @alerts_router.get("")
-async def get_alerts(session_id: str | None = None):
+async def get_alerts(
+    session_id: str | None = None,
+    current_user=Depends(require_hod),
+):
     if session_id:
         session = db_get_session(session_id)
         return session.get("alerts", []) if session else []

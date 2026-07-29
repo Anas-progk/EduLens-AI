@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Session, AuthUser } from './types';
 import { getSession } from './api';
+import { useAuthStore } from './store';
 
 // ─── Poll session until done ────────────────────────────────────────────────
 export function usePollSession(sessionId: string | null, intervalMs = 2000) {
@@ -34,25 +35,15 @@ export function usePollSession(sessionId: string | null, intervalMs = 2000) {
 }
 
 // ─── Auth state ────────────────────────────────────────────────────────────
-export function useAuth(): { user: AuthUser | null; logout: () => void } {
-  const [user, setUser] = useState<AuthUser | null>(null);
+export function useAuth(): { user: AuthUser | null; logout: () => void; isLoading: boolean } {
+  const store = useAuthStore();
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const raw = localStorage.getItem('edulens_user');
-    if (raw) {
-      try { setUser(JSON.parse(raw)); } catch { /* ignore */ }
-    }
+    store.hydrate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('edulens_token');
-    localStorage.removeItem('edulens_user');
-    setUser(null);
-    window.location.href = '/login';
-  }, []);
-
-  return { user, logout };
+  return { user: store.user, logout: store.logout, isLoading: store.isLoading };
 }
 
 // ─── Animated counter ────────────────────────────────────────────────────────

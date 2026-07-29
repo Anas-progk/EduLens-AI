@@ -9,6 +9,12 @@ from datetime import datetime
 class LoginRequest(BaseModel):
     email: str
     password: str
+    captcha_token: Optional[str] = None
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
 
 class UserOut(BaseModel):
     id: str
@@ -16,9 +22,17 @@ class UserOut(BaseModel):
     email: str
     role: Literal['teacher', 'hod', 'principal']
 
-class LoginResponse(BaseModel):
-    token: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
     user: UserOut
+
+
+class LoginResponse(TokenResponse):
+    pass
 
 
 # ─── Session ──────────────────────────────────────────────────────────────────

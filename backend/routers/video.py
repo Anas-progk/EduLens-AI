@@ -5,11 +5,12 @@ import json
 import logging
 import threading
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
 
 from backend.schemas import SessionStatus, SessionTimeline
-from backend.database import create_session, get_session, update_session, list_sessions, get_session_frames
+from backend.database import create_session, get_session, update_session, list_sessions, get_session_frames, check_session_ownership
+from backend.dependencies import require_teacher, verify_session_owner
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -50,7 +51,7 @@ def _run_analysis(session_id: str, video_path: str):
 
 
 @router.post("/upload")
-async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = File(...), current_user: dict = Depends(require_teacher)):
     """Upload a classroom video and create a new session."""
     if not file.content_type or not file.content_type.startswith("video/"):
         # Also accept if content type detection fails
@@ -65,20 +66,21 @@ async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = Fil
     with open(save_path, "wb") as f:
         f.write(content)
 
-    # Create DB record
-    create_session(session_id=session_id, filename=file.filename or "video.mp4")
+    # Create DB record with owner
+    create_session(session_id=session_id, filename=file.filename or "video.mp4", user_id=current_user["id"])
     update_session(session_id, file_path=str(save_path), status="queued")
 
-    logger.info(f"Video uploaded: {file.filename} → session {session_id}")
+    logger.info(f"Video uploaded: {file.filename} → session {session_id} by {current_user['email']}")
     return {"sessionId": session_id, "filename": file.filename}
 
 
 @router.post("/{session_id}/analyze")
-async def start_analysis(session_id: str):
+async def start_analysis(session_id: str, current_user: dict = Depends(require_teacher)):
     """Start background analysis for an uploaded session."""
-    session = get_session(session_id)
+    from backend.database import check_session_ownership
+    session = check_session_ownership(session_id, current_user["id"])
     if not session:
-        raise HTTPException(404, f"Session {session_id} not found")
+        raise HTTPException(403, "Access denied: session not owned by user")
     if session["status"] == "processing":
         return {"message": "Already processing"}
 
@@ -90,7 +92,7 @@ async def start_analysis(session_id: str):
 
 
 @router.get("/{session_id}", response_model=SessionStatus)
-async def get_session_status(session_id: str):
+async def get_session_status(session_id: str, current_user: dict = Depends(require_teacher)):
     """Get current status and progress of a session."""
     session = get_session(session_id)
     if not session:
@@ -111,7 +113,7 @@ async def get_session_status(session_id: str):
 
 
 @router.get("", response_model=list)
-async def get_sessions():
+async def get_sessions(current_user: dict = Depends(require_teacher)):
     """List all sessions, most recent first."""
     sessions = list_sessions()
     return [
@@ -131,7 +133,7 @@ async def get_sessions():
 
 
 @router.get("/{session_id}/timeline")
-async def get_timeline(session_id: str):
+async def get_timeline(session_id: str, current_user: dict = Depends(require_teacher)):
     """Get full session timeline, students, and alerts."""
     session = get_session(session_id)
     if not session:
@@ -148,7 +150,7 @@ async def get_timeline(session_id: str):
 
 
 @router.get("/{session_id}/frames")
-async def get_frames(session_id: str):
+async def get_frames(session_id: str, current_user: dict = Depends(verify_session_owner)):
     """
     Return per-frame detection data for bbox canvas overlay.
     Format: [{t: float, detections: [{track_id, bbox:[x1,y1,x2,y2], label, prob}]}]
@@ -162,7 +164,7 @@ async def get_frames(session_id: str):
 
 
 @router.get("/{session_id}/report")
-async def get_report(session_id: str):
+async def get_report(session_id: str, current_user: dict = Depends(verify_session_owner)):
     """Generate and return a PDF session report."""
     session = get_session(session_id)
     if not session:

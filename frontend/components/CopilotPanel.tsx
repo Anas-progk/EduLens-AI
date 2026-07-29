@@ -68,11 +68,33 @@ function generateLocalResponse(q: string, ctx: ContextData): CopilotMessage {
     return mkAI(text);
   }
 
-  if (lower.includes('suggest') || lower.includes('recommend') || lower.includes('action')) {
-    const actions = engagement < 60
+  if (lower.includes('suggest') || lower.includes('recommend') || lower.includes('action') || lower.includes('improve')) {
+    const actions = engagement < 50
       ? ['Start a discussion activity', 'Ask targeted questions to disengaged students', 'Introduce a short collaborative exercise', 'Take a 2-minute break']
-      : ['Maintain current pace — engagement is good', 'Consider a quick quiz to test retention', 'Try small-group work to boost collaboration'];
-    const text = `Based on current metrics (Engagement: ${engagement}%, Collab: ${collab}%):\n\n**Recommended actions:**\n${actions.map(a => `• ${a}`).join('\n')}`;
+      : collab < 50
+        ? ['Try small-group work to boost collaboration', 'Assign pair activities', 'Use think-pair-share technique']
+        : ['Maintain current pace — engagement is good', 'Consider a quick quiz to test retention', 'Try peer teaching for deeper learning'];
+    const concerns = [];
+    if (engagement < 60) concerns.push('low engagement');
+    if (collab < 60) concerns.push('low collaboration');
+    if (health < 60) concerns.push('declining class health');
+    const prefix = concerns.length > 0
+      ? `Based on current metrics — concerns detected: **${concerns.join(', ')}** (Engagement: ${engagement}%, Collab: ${collab}%, Health: ${health}%).`
+      : `Based on current metrics — the class is performing well (Engagement: ${engagement}%, Collab: ${collab}%, Health: ${health}%).`;
+    const text = `${prefix}\n\n**Recommended actions:**\n${actions.map(a => `• ${a}`).join('\n')}`;
+    return mkAI(text);
+  }
+
+  if (lower.includes('bored') || lower.includes('boredom') || lower.includes('disengaged pattern')) {
+    const lowPts = timeline.filter(p => p.engagement < 45);
+    if (lowPts.length === 0) return mkAI('No significant boredom patterns detected — engagement was consistently above 45% throughout the session.');
+    const text = `**Boredom/Disengagement Analysis:**\n• ${lowPts.length} period${lowPts.length > 1 ? 's' : ''} with engagement below 45%\n• Lowest point: ${lowestPt?.engagement ?? 0}% at ${Math.floor((lowestPt?.t ?? 0) / 60)}min\n• ${disengaged.length} student${disengaged.length !== 1 ? 's' : ''} showed sustained disengagement\n• Collaboration also dipped to ${lowestPt?.collab ?? 0}% during low points\n\n**Likely causes:**\n• Extended lecture periods without interaction\n• Complex topics without scaffolding\n• Lack of visual aids or hands-on activities`;
+    return mkAI(text);
+  }
+
+  if (lower.includes('confus') || lower.includes('struggl') || lower.includes('difficult')) {
+    const highAlert = alerts.filter(a => a.severity === 'critical');
+    const text = `**Confusion/Struggle Analysis:**\n• ${highAlert.length} critical alert${highAlert.length !== 1 ? 's' : ''} triggered\n• ${disengaged.length} student${disengaged.length !== 1 ? 's' : ''} showing low engagement\n• Average engagement during alerts: ${engagement}%\n\n**Recommendations:**\n• Review concepts where engagement dropped\n• Provide additional practice problems\n• Offer one-on-one support to struggling students`;
     return mkAI(text);
   }
 
@@ -100,6 +122,8 @@ const SUGGESTIONS = [
   'Most disengaged period?',
   'Which students need help?',
   'Suggest interventions',
+  'Session summary',
+  'Collaboration analysis',
 ];
 
 interface CopilotPanelProps {

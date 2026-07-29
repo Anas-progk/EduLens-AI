@@ -3,9 +3,11 @@
 import uuid
 import time
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+
 from backend.schemas import CopilotRequest, CopilotResponse, CopilotAction
 from backend.database import get_session
+from backend.dependencies import require_teacher
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/copilot", tags=["copilot"])
@@ -180,8 +182,8 @@ def _rule_response(question, ctx):
 
 
 @router.post("/ask", response_model=CopilotResponse)
-async def ask_copilot(req: CopilotRequest):
-    """Main copilot endpoint."""
+async def ask_copilot(req: CopilotRequest, current_user: dict = Depends(require_teacher)):
+    """Main copilot endpoint. Teacher, HOD, Principal allowed."""
     ctx  = _build_context(req.session_id)
     text, action = _rule_response(req.question, ctx)
     return CopilotResponse(

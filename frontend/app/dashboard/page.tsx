@@ -8,6 +8,7 @@ import {
   Activity, TrendingUp, TrendingDown, AlertTriangle, Volume2
 } from 'lucide-react';
 import { Sidebar, TopNav } from '@/components/Navbar';
+import { AuthGuard } from '@/components/AuthGuard';
 import { EngagementChart } from '@/components/EngagementChart';
 import { TimelineReplay } from '@/components/TimelineReplay';
 import { CopilotPanel } from '@/components/CopilotPanel';
@@ -140,6 +141,16 @@ export default function DashboardPage() {
     }
   };
 
+  const handleExportJSON = () => {
+    const data = { timeline, students, alerts, collabVerdict, avgEngagement, avgCollab, avgHealth };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `edulens_data_${sessionId ?? 'demo'}.json`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success('JSON data exported');
+  };
+
   const avgEngagement = Math.round(timeline.reduce((s, p) => s + p.engagement, 0) / timeline.length);
   const avgCollab = Math.round(timeline.reduce((s, p) => s + p.collab, 0) / timeline.length);
   const avgHealth = Math.round(timeline.reduce((s, p) => s + p.health, 0) / timeline.length);
@@ -174,6 +185,7 @@ export default function DashboardPage() {
   };
 
   return (
+    <AuthGuard>
     <div className="flex h-screen bg-bg-primary overflow-hidden">
       <Sidebar />
 
@@ -200,6 +212,13 @@ export default function DashboardPage() {
             >
               <Volume2 size={13} />
               {speaking ? 'Narrating…' : 'Narrate Session'}
+            </button>
+            <button
+              onClick={handleExportJSON}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/5 border border-white/8 text-text-secondary hover:text-text-primary hover:bg-white/8 transition-all"
+            >
+              <Download size={13} />
+              Export JSON
             </button>
             <button
               onClick={handleExportPDF}
@@ -416,5 +435,6 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+    </AuthGuard>
   );
 }

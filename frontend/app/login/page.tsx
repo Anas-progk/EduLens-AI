@@ -1,11 +1,16 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Brain, Eye, EyeOff, ArrowRight, Shield } from 'lucide-react';
+import { Brain, Eye, EyeOff, ArrowRight, Shield, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/lib/store';
+
+// Turnstile is opt-in locally; keys are domain-bound and must not be hard-coded.
+const TURNSTILE_ENABLED = process.env.NEXT_PUBLIC_TURNSTILE_ENABLED === 'true';
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
 const DEMO_USERS = [
   { email: 'teacher@edulens.ai', password: 'demo123', role: 'Teacher', desc: 'Full classroom access' },
@@ -13,58 +18,118 @@ const DEMO_USERS = [
   { email: 'principal@edulens.ai', password: 'demo123', role: 'Principal', desc: 'Institution-level analytics' },
 ];
 
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: string | HTMLElement, options: Record<string, unknown>) => string;
+      reset: (widgetId: string) => void;
+      getResponse: (widgetId: string) => string;
+    };
+    onTurnstileLoad?: () => void;
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
+  const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<string | null>(null);
+  const captchaContainerRef = useRef<HTMLDivElement>(null);
+  const [captchaError, setCaptchaError] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!TURNSTILE_ENABLED || !TURNSTILE_SITE_KEY) return;
+
+    const checkTurnstile = () => {
+      if (typeof window !== 'undefined' && window.turnstile && captchaContainerRef.current) {
+        const id = window.turnstile.render(captchaContainerRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          theme: 'dark',
+          callback: (token: string) => {
+            setCaptchaToken(token);
+            setCaptchaError(false);
+          },
+          'expired-callback': () => {
+            setCaptchaToken(null);
+          },
+          'error-callback': () => {
+            setCaptchaToken(null);
+            setCaptchaError(true);
+          },
+        });
+        captchaRef.current = id;
+      } else {
+        setTimeout(checkTurnstile, 200);
+      }
+    };
+    checkTurnstile();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError(null);
     setLoading(true);
-    try {
-      // Demo mode — just check against local users
-      const match = DEMO_USERS.find((u) => u.email === email && u.password === password);
-      if (match) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('edulens_token', 'demo-token');
-          localStorage.setItem('edulens_user', JSON.stringify({ email, role: match.role }));
-        }
+
+    // Demo mode auto-fill check
+    const match = DEMO_USERS.find((u) => u.email === email && u.password === password);
+    if (match) {
+      try {
+        await login(email, password);
         toast.success(`Welcome back, ${match.role}!`);
-        setTimeout(() => router.push('/monitor'), 800);
-      } else {
-        // Try actual API
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          localStorage.setItem('edulens_token', data.token);
-          localStorage.setItem('edulens_user', JSON.stringify(data.user));
-          toast.success('Logged in successfully');
-          router.push('/monitor');
-        } else {
-          toast.error('Invalid credentials');
-        }
+        router.push('/monitor');
+      } catch {
+        toast.error('Backend is not running — start the server to continue');
       }
-    } catch {
-      toast.error('Login failed — check the backend is running');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await login(email, password, TURNSTILE_ENABLED ? captchaToken ?? undefined : undefined);
+      toast.success('Logged in successfully');
+      router.push('/monitor');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Login failed';
+      if (msg.includes('CAPTCHA') || msg.includes('captcha')) {
+        setCaptchaError(true);
+        if (captchaRef.current && window.turnstile) {
+          window.turnstile.reset(captchaRef.current);
+        }
+        setCaptchaToken(null);
+        setLoginError('CAPTCHA verification failed. Please try again.');
+      } else if (msg.includes('401') || msg.includes('Invalid') || msg.includes('invalid')) {
+        setLoginError('Invalid email or password');
+      } else {
+        setLoginError('Login failed — check the backend is running');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const quickLogin = (u: (typeof DEMO_USERS)[0]) => {
+  const quickLogin = async (u: (typeof DEMO_USERS)[0]) => {
     setEmail(u.email);
     setPassword(u.password);
+    setLoginError(null);
+    setLoading(true);
+    try {
+      await login(u.email, u.password);
+      toast.success(`Welcome back, ${u.role}!`);
+      router.push('/monitor');
+    } catch {
+      toast.error('Backend is not running — start the server to continue');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-primary p-6 relative overflow-hidden">
-      {/* Background orbs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-8"
         style={{ background: 'radial-gradient(circle, #4F7FFF 0%, transparent 70%)' }} />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl opacity-6"
@@ -76,7 +141,6 @@ export default function LoginPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        {/* Logo */}
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-blue to-accent-indigo flex items-center justify-center shadow-lg">
@@ -91,6 +155,17 @@ export default function LoginPage() {
           <p className="text-text-secondary text-sm text-center mb-8">Sign in to your EduLens account</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
+            {loginError && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-status-notEngaged/10 border border-status-notEngaged/20 text-xs text-status-notEngaged"
+              >
+                <AlertCircle size={13} />
+                {loginError}
+              </motion.div>
+            )}
+
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1.5">Email</label>
               <input
@@ -122,6 +197,9 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            <div ref={captchaContainerRef} className={`flex justify-center ${captchaError ? 'ring-1 ring-status-notEngaged/50 rounded-lg' : ''}`} />
+
             <button
               type="submit"
               disabled={loading}
@@ -136,18 +214,18 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo accounts */}
           <div className="mt-6 pt-6 border-t border-white/8">
             <p className="text-xs text-text-muted text-center mb-3 flex items-center justify-center gap-1.5">
               <Shield size={11} />
-              Demo accounts — click to auto-fill
+              Demo accounts — click to auto-fill & login
             </p>
             <div className="space-y-2">
               {DEMO_USERS.map((u) => (
                 <button
                   key={u.role}
                   onClick={() => quickLogin(u)}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-white/6 bg-white/3 hover:bg-white/6 hover:border-white/12 transition-all text-left"
+                  disabled={loading}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-white/6 bg-white/3 hover:bg-white/6 hover:border-white/12 transition-all text-left disabled:opacity-50"
                 >
                   <div className="w-7 h-7 rounded-full bg-gradient-to-br from-accent-blue to-accent-indigo flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                     {u.role[0]}

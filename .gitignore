@@ -50,3 +50,28 @@ video_colab/
 # Python cache
 __pycache__/
 *.pyc
+
+# Backend
+backend/edulens.db
+backend/uploads/
+*.db
+*.db-journal
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+*.tsbuildinfo
+
+# Example environment files are kept
+!.env.example
+!.env.local.example
+
+# macOS
+.DS_Store

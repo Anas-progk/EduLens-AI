@@ -75,5 +75,12 @@ export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
-  token: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: AuthUser;
 }

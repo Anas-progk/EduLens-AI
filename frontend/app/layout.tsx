@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
 
@@ -12,6 +12,8 @@ export const metadata: Metadata = {
     type: 'website',
   },
 };
+
+const turnstileEnabled = process.env.NEXT_PUBLIC_TURNSTILE_ENABLED === 'true';
 
 export default function RootLayout({
   children,
@@ -27,6 +29,9 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
+        {turnstileEnabled && (
+          <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+        )}
       </head>
       <body className="min-h-screen bg-bg-primary text-text-primary antialiased grid-bg">
         {children}
