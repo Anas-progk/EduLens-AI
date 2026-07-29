@@ -40,6 +40,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
+        "https://edu-lens-62uvjsvup-anas-progk1.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
