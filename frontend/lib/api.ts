@@ -2,8 +2,8 @@ import axios from 'axios';
 import type { Session, CopilotMessage, StudentState, TimelinePoint, AlertEvent, AuthUser, LoginResponse } from './types';
 
 const BASE = "https://edulens-ai-backend.onrender.com/api";
-console.log("NEXT_PUBLIC_API_URL =", process.env.NEXT_PUBLIC_API_URL);
 console.log("BASE =", BASE);
+console.log("ENV =", process.env.NEXT_PUBLIC_API_URL);
 const LS_ACCESS = 'edulens_access_token';
 const LS_REFRESH = 'edulens_refresh_token';
 const LS_USER = 'edulens_user';
